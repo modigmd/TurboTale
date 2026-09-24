@@ -5,23 +5,17 @@ import { BridgeRun } from "../game/bridgeRun.ts";
 import { DialogueModel } from "../game/dialogue.ts";
 import { cellKey, type Cell, type Direction, type InputAction } from "../game/types.ts";
 import { loadProgress, saveProgress, type SavedProgress } from "../game/progress.ts";
-import { bindTouchInput, canRevealMonsters, InputRouter } from "../systems/input.ts";
+import { bindTouchInput, canRevealMonsters, InputRouter, MovementPacer } from "../systems/input.ts";
 import { RetroAudio } from "../systems/retroAudio.ts";
 import { DomHud } from "../ui/domHud.ts";
 
 type Mode = "title" | "overworld" | "story" | "bridge" | "encounter" | "ended";
-type MapPoint = { x: number; y: number };
-const MAP_WIDTH = 30;
-const MAP_HEIGHT = 20;
-const BRIDGE_ENTRIES = [{ x: 7, y: 10 }, { x: 15, y: 10 }, { x: 23, y: 10 }];
-const BRIDGE_EXITS = [{ x: 9, y: 10 }, { x: 17, y: 10 }, { x: 25, y: 10 }];
-const START_POINT = { x: 2, y: 10 };
-const FAMILY_POINT = { x: 28, y: 10 };
-const BLOCKING_TILES = new Set<number>([TileIds.water, TileIds.tree, TileIds.stone, TileIds.house]);
+import { MAP_WIDTH, MAP_HEIGHT, BRIDGE_ENTRIES, BRIDGE_EXITS, START_POINT, FAMILY_POINT, CABIN_POINT, LANTERN_POINT, TREE_POINTS, STONE_POINTS, SIGN_POINTS, JURY_POINTS, MONSTER_POINT, worldBlockAt, type MapPoint } from "../game/world.ts";
 
 export class GameScene extends Phaser.Scene {
   private progress!: SavedProgress;
   private inputRouter!: InputRouter;
+  private movementPacer = new MovementPacer();
   private hud!: DomHud;
   private audio!: RetroAudio;
   private dialogue!: DialogueModel;
@@ -50,6 +44,7 @@ export class GameScene extends Phaser.Scene {
     this.load.spritesheet(TextureKeys.turbo, AssetPaths.turbo, { frameWidth: 64, frameHeight: 64 });
     this.load.image(TextureKeys.tree, AssetPaths.tree);
     this.load.image(TextureKeys.cabin, AssetPaths.cabin);
+    this.load.image(TextureKeys.star, AssetPaths.star);
   }
 
   create(): void {
@@ -125,41 +120,29 @@ export class GameScene extends Phaser.Scene {
     saveProgress(this.progress);
     this.drawOverworld();
     window.setTimeout(() => void this.audio.unlock().catch(() => undefined), 0);
-    if (this.progress.unlockedBridge === 0) {
-      this.dialogue.say("Turbo only wanted to cross the rivers and reach his family.");
-    }
+
   }
 
   private handleAction(action: InputAction): void {
     if (action === "reveal") { this.toggleMonsterReveal(); return; }
-    if (this.mode === "title") {
-      void this.startGame();
-      return;
-    }
-    if (this.dialogue.hasText && action !== "back") {
-      const wasBridge = this.mode === "bridge";
-      const advanced = this.advanceDialogue();
-      if (advanced && action !== "confirm" && wasBridge && this.mode === "bridge" && !this.dialogue.hasText && this.run) {
-        this.moveBridge(action);
-      }
-      return;
-    }
-    if (action === "confirm") {
-      this.advanceDialogue();
-      return;
-    }
+    if (this.mode === "title") { void this.startGame(); return; }
+    if (action === "confirm") { this.advanceDialogue(); return; }
     if (action === "back") {
-      this.dialogue.say(this.mode === "overworld" ? "The snow muffles the jury's laughter." : "Turbo keeps walking. The jury keeps smiling.");
+      this.hud.showNotice(this.mode === "overworld" ? "Head for the next bridge." : "Reach any large star.");
       return;
     }
-    if (this.mode === "overworld") {
-      this.moveOverworld(action);
-      return;
+    if (this.mode === "ended" || !this.movementPacer.accept(performance.now())) return;
+    // A direction also dismisses dialogue and completes its transition.
+    // Never consume a movement gesture just to close an informational message.
+    for (let i = 0; i < 4 && (this.dialogue.hasText || this.nextAfterDialogue); i++) {
+      this.dialogue.clear();
+      const next = this.nextAfterDialogue;
+      this.nextAfterDialogue = null;
+      next?.();
     }
-    if (this.mode !== "bridge" || !this.run) {
-      return;
-    }
-    this.moveBridge(action);
+    this.hud.clearNotice();
+    if (this.mode === "overworld") this.moveOverworld(action);
+    else if (this.mode === "bridge" && this.run) this.moveBridge(action);
   }
 
   private advanceDialogue(): boolean {
@@ -167,7 +150,7 @@ export class GameScene extends Phaser.Scene {
     if (result === "none") {
       return false;
     }
-    if (this.dialogue.isFinished && this.nextAfterDialogue) {
+    if (result === "closed" && this.nextAfterDialogue) {
       const next = this.nextAfterDialogue;
       this.nextAfterDialogue = null;
       next();
@@ -178,8 +161,10 @@ export class GameScene extends Phaser.Scene {
   private moveOverworld(direction: Direction): void {
     const delta = directionDelta(direction);
     const target = { x: this.overworldTurbo.x + delta.x, y: this.overworldTurbo.y + delta.y };
-    if (!this.isWalkable(target)) {
-      this.dialogue.say("The river is cold. The trees are colder.");
+    const obstruction = worldBlockAt(target);
+    if (obstruction) {
+      if (obstruction === "water") this.hud.showNotice("The river is cold.");
+      else if (obstruction === "edge") this.hud.showNotice("Can't go there.");
       return;
     }
     this.overworldTurbo = target;
@@ -187,7 +172,7 @@ export class GameScene extends Phaser.Scene {
     const bridgeIndex = this.bridgeIndexAt(target);
     if (bridgeIndex !== -1) {
       if (bridgeIndex > this.progress.unlockedBridge) {
-        this.dialogue.say("The next jury table waits, but Turbo has unfinished business.");
+        this.hud.showNotice("Cross the previous bridge first.");
         return;
       }
       this.startBridgeIntro(bridgeIndex);
@@ -207,7 +192,6 @@ export class GameScene extends Phaser.Scene {
     this.mode = "bridge";
     this.revealMonsterPlaces = false;
     this.run = new BridgeRun(BRIDGES[index]);
-    this.dialogue.say(`${this.run.bridge.title}. Cross to the middle of the final row.`);
     this.drawBridge();
   }
 
@@ -223,7 +207,6 @@ export class GameScene extends Phaser.Scene {
     this.mode = "bridge";
     this.revealMonsterPlaces = false;
     this.run = new BridgeRun(FINAL_EDGE_BRIDGE);
-    this.dialogue.say(`${this.run.bridge.title}. Cross to the middle of the final row.`);
     this.drawBridge();
   }
 
@@ -235,12 +218,11 @@ export class GameScene extends Phaser.Scene {
     this.drawBridge();
 
     if (result.kind === "blocked") {
-      this.dialogue.say(result.message);
       return;
     }
     if (result.kind === "monster") {
       this.showEncounter("* A monster!");
-      this.dialogue.say(["A monster!", `${result.attemptsLeft} attempt${result.attemptsLeft === 1 ? "" : "s"} left.`]);
+      this.dialogue.say([{speaker:"turbo",text:"A monster!"},{speaker:"jury",text:`${result.attemptsLeft} attempt${result.attemptsLeft === 1 ? "" : "s"} left.`}]);
       this.nextAfterDialogue = () => {
         this.mode = "bridge";
         this.encounterLayer.setVisible(false);
@@ -250,7 +232,7 @@ export class GameScene extends Phaser.Scene {
     }
     if (result.kind === "gameOver") {
       this.showEncounter("* A monster!");
-      this.dialogue.say(["A monster!", "The bridge keeps its promise. Turbo is out of attempts."]);
+      this.dialogue.say({speaker:"jury",text:"No attempts left. Try again."});
       this.nextAfterDialogue = () => this.restartCurrentBridge();
       return;
     }
@@ -266,7 +248,7 @@ export class GameScene extends Phaser.Scene {
     if (this.run.bridge.id === FINAL_EDGE_BRIDGE.id) {
       this.mode = "ended";
       this.drawFamilyEnding();
-      this.dialogue.say(["Turbo crossed the final bridge.", "His family was waiting on the other side."]);
+      this.dialogue.say({speaker:"family",text:"You're home!"});
       return;
     }
     const currentIndex = BRIDGES.findIndex((bridge) => bridge.id === this.run?.bridge.id);
@@ -280,7 +262,6 @@ export class GameScene extends Phaser.Scene {
     this.mode = "overworld";
     this.run = null;
     this.drawOverworld();
-    this.dialogue.say("Turbo crossed the bridge.");
   }
 
   private restartCurrentBridge(): void {
@@ -331,23 +312,23 @@ export class GameScene extends Phaser.Scene {
       if(frame===TerrainFrames.path) tile.setAngle(90);
       if(logical===TileIds.water) tile.play("river-flow");
     }
-    // Boundary trees are scenery only. Logical collision cells stay untouched.
+    // The visible forest border is solid, using the shared world footprint.
     for(let x=-1;x<31;x+=2) {
       this.prop(tileCenter(x),118+(x%3)*8,TextureKeys.tree);
       this.prop(tileCenter(x+1),644+(x%3)*6,TextureKeys.tree);
     }
-    for(const tree of this.treePoints()) this.prop(tileCenter(tree.x),tileCenter(tree.y)+16,TextureKeys.tree);
+    for(const tree of TREE_POINTS) this.prop(tileCenter(tree.x),tileCenter(tree.y)+16,TextureKeys.tree);
     for(const y of [180,360,540]) {
       this.prop(-4,y,TextureKeys.props,3,64,96);
       this.prop(964,y+40,TextureKeys.props,3,64,96);
     }
-    for(const stone of this.stonePoints()) this.prop(tileCenter(stone.x),tileCenter(stone.y)+15,TextureKeys.props,0,40,40);
-    for(const sign of this.signPoints()) this.prop(tileCenter(sign.x),tileCenter(sign.y)+16,TextureKeys.props,1,40,40);
-    this.prop(tileCenter(27),tileCenter(17)+16,TextureKeys.cabin);
-    this.prop(tileCenter(27),tileCenter(11)+16,TextureKeys.props,2,48,48);
+    for(const stone of STONE_POINTS) this.prop(tileCenter(stone.x),tileCenter(stone.y)+15,TextureKeys.props,0,40,40);
+    for(const sign of SIGN_POINTS) this.prop(tileCenter(sign.x),tileCenter(sign.y)+16,TextureKeys.props,1,40,40);
+    this.prop(tileCenter(CABIN_POINT.x),tileCenter(CABIN_POINT.y)+16,TextureKeys.cabin);
+    this.prop(tileCenter(LANTERN_POINT.x),tileCenter(LANTERN_POINT.y)+16,TextureKeys.props,2,48,48);
     this.prop(tileCenter(FAMILY_POINT.x),tileCenter(FAMILY_POINT.y)+16,TextureKeys.actors,0,48,48);
-    for(const point of [{x:6,y:9},{x:14,y:9},{x:21,y:9},{x:22,y:11}]) this.prop(tileCenter(point.x),tileCenter(point.y)+16,TextureKeys.actors,1,44,44);
-    this.prop(tileCenter(22),tileCenter(12)+16,TextureKeys.actors,3,48,48);
+    for(const point of JURY_POINTS) this.prop(tileCenter(point.x),tileCenter(point.y)+16,TextureKeys.actors,1,44,44);
+    this.prop(tileCenter(MONSTER_POINT.x),tileCenter(MONSTER_POINT.y)+16,TextureKeys.actors,3,48,48);
     this.turbo=this.add.sprite(tileCenter(this.overworldTurbo.x),tileCenter(this.overworldTurbo.y),TextureKeys.turbo,0).setDisplaySize(48,48).setOrigin(.5,.8);
     this.turbo.play("turbo-idle");
     this.boardLayer.add(this.turbo);
@@ -386,16 +367,14 @@ export class GameScene extends Phaser.Scene {
       const cell={row,col};
       const x=originX+(col+.5)*tile, y=(row+.5)*tile;
       const known=row===0 || row===bridge.height-1 || this.run.oracle.visitedCells.has(cellKey(cell));
-      const terrain=row===0?TerrainFrames.start:row===bridge.height-1?TerrainFrames.goal:known?TerrainFrames.walked:isFinalBridge(bridge.id)?TerrainFrames.darkBridge:TerrainFrames.bridge;
+      const terrain=row===0?TerrainFrames.start:row===bridge.height-1?TerrainFrames.goal:known?TerrainFrames.walked:TerrainFrames.darkBridge;
       this.terrain(x,y,terrain,tile,tile).setDepth(-80);
       if(this.run.oracle.isMonsterVisual(cell) || (this.revealMonsterPlaces && this.run.oracle.isMonsterAt(cell))) {
         this.boardLayer.add(this.add.image(x,y,TextureKeys.actors,isFinalBridge(bridge.id)?3:2).setDisplaySize(tile,tile));
       }
     }
-    // Only the middle endpoints get the gold marker; side cells remain valid safe landings.
     for(const row of [0,bridge.height-1]) for(let col=0;col<bridge.width;col++) {
-      if(col===Math.floor(bridge.width/2)) continue;
-      this.terrain(originX+(col+.5)*tile,(row+.5)*tile,TerrainFrames.walked,tile,tile).setDepth(-79);
+      this.boardLayer.add(this.add.image(originX+(col+.5)*tile,(row+.5)*tile,TextureKeys.star).setDisplaySize(tile*(row===0?.34:.68),tile*(row===0?.34:.68)));
     }
     this.turbo=this.add.sprite(originX+(this.run.turbo.col+.5)*tile,(this.run.turbo.row+.5)*tile,TextureKeys.turbo,0).setDisplaySize(tile,tile).setDepth(20);
     const grid=this.add.graphics().setDepth(-70).lineStyle(1,0x172333,.55);
@@ -458,61 +437,22 @@ export class GameScene extends Phaser.Scene {
       data[entry.y - 1][entry.x] = TileIds.bridge;
       data[entry.y - 1][entry.x + 1] = TileIds.bridge;
     }
-    for (const tree of this.treePoints()) {
+    for (const tree of TREE_POINTS) {
       data[tree.y][tree.x] = TileIds.tree;
     }
-    for (const stone of this.stonePoints()) {
+    for (const stone of STONE_POINTS) {
       data[stone.y][stone.x] = TileIds.stone;
     }
-    for (const sign of this.signPoints()) {
+    for (const sign of SIGN_POINTS) {
       data[sign.y][sign.x] = TileIds.sign;
     }
-    data[17][27] = TileIds.house;
-    data[11][27] = TileIds.lantern;
+    data[CABIN_POINT.y][CABIN_POINT.x] = TileIds.house;
+    data[LANTERN_POINT.y][LANTERN_POINT.x] = TileIds.lantern;
     return data;
-  }
-
-  private isWalkable(point: MapPoint): boolean {
-    if (point.x < 0 || point.x >= MAP_WIDTH || point.y < 0 || point.y >= MAP_HEIGHT) {
-      return false;
-    }
-    return !BLOCKING_TILES.has(this.currentMapTiles[point.y][point.x]);
   }
 
   private bridgeIndexAt(point: MapPoint): number {
     return BRIDGE_ENTRIES.findIndex((entry) => (point.x === entry.x || point.x === entry.x + 1) && (point.y === entry.y || point.y === entry.y - 1));
-  }
-
-  private treePoints(): MapPoint[] {
-    return [
-      { x: 1, y: 2 },
-      { x: 3, y: 4 },
-      { x: 5, y: 15 },
-      { x: 9, y: 3 },
-      { x: 10, y: 16 },
-      { x: 12, y: 2 },
-      { x: 18, y: 4 },
-      { x: 19, y: 16 },
-      { x: 25, y: 15 },
-      { x: 28, y: 3 }
-    ];
-  }
-
-  private stonePoints(): MapPoint[] {
-    return [
-      { x: 4, y: 13 },
-      { x: 11, y: 6 },
-      { x: 18, y: 14 },
-      { x: 26, y: 5 }
-    ];
-  }
-
-  private signPoints(): MapPoint[] {
-    return [
-      { x: 5, y: 8 },
-      { x: 13, y: 8 },
-      { x: 21, y: 8 }
-    ];
   }
 
   private makeLabel(text: string, x: number, y: number, size: number, align: CanvasTextAlign = "center"): Phaser.GameObjects.Text {
@@ -536,7 +476,8 @@ export class GameScene extends Phaser.Scene {
       !this.dialogue.isRevealing,
       this.progress,
       showRevealButton,
-      this.revealMonsterPlaces
+      this.revealMonsterPlaces,
+      this.dialogue.speaker
     );
   }
 

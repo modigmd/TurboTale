@@ -204,6 +204,14 @@
         }
       ],
       "prompt": "actors.prompt.txt"
+    },
+    "star": {
+      "size": [
+        16,
+        16
+      ],
+      "source": "terrain atlas goal marker",
+      "prompt": "terrain.prompt.txt"
     }
   }
 }

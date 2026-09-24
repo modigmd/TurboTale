@@ -10,7 +10,7 @@ The current game uses six original image sheets generated with OpenAI's built-in
 - Reproducible nearest-neighbor packing and alpha cleanup: `scripts/process-snowbound.py`
 - Runtime frame dimensions, bounds, and edge-touch validation: `pipeline-meta.json`
 
-Terrain and actors are separate runtime assets. Decorative trees and the cabin do not change the original logical map. No Undertale sprites, fonts, or audio are shipped by this redesign. Typography uses the system Courier New/monospace stack. Dialogue blips and encounter sounds are generated with Web Audio.
+Terrain and actors are separate runtime assets. Scenery and collision share placement data, including solid tree canopies, rocks, jury characters, and the cabin. Speaker portraits and endpoint stars are extracted from the existing generated sheets. No Undertale sprites, fonts, or audio are shipped by this redesign. Typography uses the system Courier New/monospace stack. Dialogue blips and encounter sounds are generated with Web Audio.
 
 ## Retained legacy assets
 

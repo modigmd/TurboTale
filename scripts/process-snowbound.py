@@ -60,5 +60,16 @@ metadata["assets"]["terrain"]={"size":[128,128],"cell":[32,32],"frames":16,"prom
 pack("turbo",2,2,(64,64),True)
 for name,cols,rows,size,names in [("tree",1,1,(64,96),['tree']),("cabin",1,1,(160,128),['cabin']),("props",2,2,(64,64),['rock','sign','lantern','trunk']),("actors",2,2,(64,64),['snail-family','jury','bridge-monster','plum-monster'])]:
     if (ROOT/(name+"-raw.png")).exists(): pack(name,cols,rows,size,crop_names=names)
+actors=Image.open(ROOT/"actors.png")
+for index,name in enumerate(['family','jury','monster','final-monster']):
+    actors.crop(((index%2)*64,(index//2)*64,(index%2+1)*64,(index//2+1)*64)).save(ROOT/(name+'-face.png'))
+# Extract the existing generated gold star; cool plank pixels become transparent.
+star=np.array(atlas.crop((106,42,118,54)))
+star[:,:,3]=np.where(star[:,:,0].astype(int)>star[:,:,2].astype(int)+4,255,0)
+star_image=Image.fromarray(star)
+star_canvas=Image.new('RGBA',(16,16))
+star_canvas.alpha_composite(star_image,(2,2))
+star_canvas.save(ROOT/'star.png')
+metadata['assets']['star']={'size':[16,16],'source':'terrain atlas goal marker','prompt':'terrain.prompt.txt'}
 (ROOT/"pipeline-meta.json").write_text(json.dumps(metadata,indent=2)+"\n")
 print(json.dumps(metadata,indent=2))

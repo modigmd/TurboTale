@@ -1,5 +1,5 @@
 import type { BridgeConfig, Cell, Direction, MoveResult } from "./types.ts";
-import { cellKey, sameCell } from "./types.ts";
+import { cellKey } from "./types.ts";
 import { RandomOracle, WorstCaseOracle, type BridgeOracle } from "./oracle.ts";
 
 const DELTAS: Record<Direction, Cell> = {
@@ -34,16 +34,16 @@ export class BridgeRun {
 
   move(direction: Direction): MoveResult {
     if (this.won || this.lost) {
-      return { kind: "blocked", cell: this.turbo, message: "* The bridge is already over." };
+      return { kind: "blocked", cell: this.turbo, reason: "finished" };
     }
 
     const delta = DELTAS[direction];
     const target = { row: this.turbo.row + delta.row, col: this.turbo.col + delta.col };
     if (!this.inBounds(target)) {
-      return { kind: "blocked", cell: target, message: "* The river says no." };
+      return { kind: "blocked", cell: target, reason: "bounds" };
     }
     if (this.oracle.blockedCells.has(cellKey(target))) {
-      return { kind: "blocked", cell: target, message: "* Turbo already knows what waits there." };
+      return { kind: "blocked", cell: target, reason: "monster" };
     }
 
     const hitMonster = this.oracle.revealIfMonster(target);
@@ -61,7 +61,7 @@ export class BridgeRun {
 
     this.turbo = target;
     this.oracle.markSafe(target);
-    if (sameCell(target, this.finalCell())) {
+    if (target.row === this.bridge.height - 1) {
       this.won = true;
       return { kind: "won", cell: target };
     }

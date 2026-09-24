@@ -1,5 +1,7 @@
 export type Direction = "up" | "down" | "left" | "right";
 export type InputAction = Direction | "confirm" | "back" | "reveal";
+export type Speaker = "turbo" | "jury" | "monster" | "finalMonster" | "family";
+export interface DialogueLine { speaker: Speaker; text: string; }
 
 export interface Cell {
   row: number;
@@ -12,14 +14,14 @@ export interface BridgeConfig {
   width: number;
   height: number;
   maxAttempts: number;
-  intro: string[];
+  intro: DialogueLine[];
   oracleMode?: "worst-case" | "random";
   forcedMonsters?: Cell[];
 }
 
 export type MoveResult =
   | { kind: "moved"; cell: Cell }
-  | { kind: "blocked"; cell: Cell; message: string }
+  | { kind: "blocked"; cell: Cell; reason: "finished" | "bounds" | "monster" }
   | { kind: "monster"; cell: Cell; attemptsLeft: number }
   | { kind: "gameOver"; cell: Cell }
   | { kind: "won"; cell: Cell };

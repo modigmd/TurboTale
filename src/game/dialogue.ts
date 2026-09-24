@@ -1,7 +1,9 @@
 import type { RetroAudio } from "../systems/retroAudio.ts";
+import type { DialogueLine, Speaker } from "./types.ts";
 
 export class DialogueModel {
-  private queue: string[] = [];
+  private queue: DialogueLine[] = [];
+  speaker: Speaker = "turbo";
   private fullText = "";
   private visibleChars = 0;
   private carry = 0;
@@ -28,9 +30,16 @@ export class DialogueModel {
     return !this.isRevealing && this.queue.length === 0;
   }
 
-  say(text: string | string[]): void {
-    this.queue = Array.isArray(text) ? [...text] : [text];
+  say(text: string | DialogueLine | DialogueLine[], speaker: Speaker = "turbo"): void {
+    this.queue = typeof text === "string" ? [{text,speaker}] : Array.isArray(text) ? [...text] : [text];
     this.loadNext();
+  }
+
+  clear(): void {
+    this.queue = [];
+    this.fullText = "";
+    this.visibleChars = 0;
+    this.carry = 0;
   }
 
   update(dt: number, audio: RetroAudio): void {
@@ -73,7 +82,9 @@ export class DialogueModel {
   }
 
   private loadNext(): void {
-    this.fullText = this.queue.shift() ?? "";
+    const line = this.queue.shift();
+    this.fullText = line?.text ?? "";
+    this.speaker = line?.speaker ?? "turbo";
     this.visibleChars = 0;
     this.carry = 0;
     this.lastBlipChar = 0;

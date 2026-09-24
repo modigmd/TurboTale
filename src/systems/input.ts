@@ -2,6 +2,16 @@ import type { Direction, InputAction } from "../game/types.ts";
 
 type Listener = (action: InputAction) => void;
 
+/** Drop rapid repeated steps instead of queuing movement after the player stops. */
+export class MovementPacer {
+  private lastStep = -Infinity;
+  accept(now: number): boolean {
+    if (now - this.lastStep < 180) return false;
+    this.lastStep = now;
+    return true;
+  }
+}
+
 const KEY_ACTIONS = new Map<string, InputAction>([
   ["ArrowUp", "up"],
   ["w", "up"],

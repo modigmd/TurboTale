@@ -157,7 +157,7 @@ describe("bridge run", () => {
     const blocked = run.move("down");
     expect(blocked.kind).toBe("blocked");
     if (blocked.kind === "blocked") {
-      expect(blocked.message).toContain("already knows");
+      expect(blocked.reason).toBe("monster");
     }
   });
 

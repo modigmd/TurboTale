@@ -1,17 +1,25 @@
 import type { BridgeRun } from "../game/bridgeRun.ts";
 import type { SavedProgress } from "../game/progress.ts";
+import type { Speaker } from "../game/types.ts";
+
+const SPEAKERS: Record<Speaker, {name:string; image:string}> = {
+  turbo: {name:"Turbo",image:"turbo-face.png"},
+  jury: {name:"IMO Jury",image:"jury-face.png"},
+  monster: {name:"Monster",image:"monster-face.png"},
+  finalMonster: {name:"Monster",image:"final-monster-face.png"},
+  family: {name:"Family",image:"family-face.png"}
+};
 
 export class DomHud {
   private root = document.getElementById("hud-root")!;
   private lastDialogue = "";
+  private noticeTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor(toggleReveal: () => void) {
     this.root.innerHTML = `
       <section class="start-overlay" data-start role="button" tabindex="0" aria-label="Begin TurboTale">
         <div class="title-card">
-          <p class="title-eyebrow">A LITTLE JOURNEY THROUGH THE SNOW</p>
           <h1>Turbo<span>Tale</span></h1>
-          <p class="title-story">Three rivers. Three bridges.<br>One very tired snail.</p>
           <span class="title-star" aria-hidden="true">✦</span>
         </div>
       </section>
@@ -20,9 +28,10 @@ export class DomHud {
         <span data-status tabindex="0" role="button" aria-label="Attempt counter. Hold to toggle monster reveal on final bridges.">NEXT BRIDGE 1</span>
         <span class="reveal-state" hidden>MONSTERS REVEALED</span>
       </aside>
+      <p class="world-notice" role="status" hidden></p>
       <section class="dialogue-box" aria-live="polite" aria-atomic="true" hidden>
         <img class="speaker-face" src="/assets/generated/snowbound/turbo-face.png" alt="" />
-        <p data-dialogue></p>
+        <div><strong class="speaker-name" data-speaker></strong><p data-dialogue></p></div>
         <span class="continue-cue" aria-hidden="true">◆</span>
       </section>
     `;
@@ -43,7 +52,26 @@ export class DomHud {
     this.root.querySelector<HTMLElement>(".status-panel")!.hidden = true;
   }
 
-  update(run: BridgeRun | null, dialogue: string, dialogueReady: boolean, progress: SavedProgress, revealAvailable: boolean, monstersRevealed: boolean): void {
+  showNotice(message: string): void {
+    clearTimeout(this.noticeTimer);
+    const notice=this.root.querySelector<HTMLElement>(".world-notice")!;
+    notice.textContent=message;
+    notice.hidden=false;
+    this.noticeTimer=setTimeout(()=>{notice.hidden=true;},1200);
+  }
+
+  clearNotice(): void {
+    clearTimeout(this.noticeTimer);
+    this.root.querySelector<HTMLElement>(".world-notice")!.hidden=true;
+  }
+
+  update(run: BridgeRun | null, dialogue: string, dialogueReady: boolean, progress: SavedProgress, revealAvailable: boolean, monstersRevealed: boolean, speaker: Speaker): void {
+    const person=SPEAKERS[speaker];
+    const face=this.root.querySelector<HTMLImageElement>(".speaker-face")!;
+    const image="/assets/generated/snowbound/"+person.image;
+    if(face.getAttribute("src")!==image) face.setAttribute("src",image);
+    face.alt=person.name;
+    this.root.querySelector("[data-speaker]")!.textContent=person.name;
     if (dialogue !== this.lastDialogue) {
       this.root.querySelector("[data-dialogue]")!.textContent = dialogue ? `* ${dialogue}` : "";
       this.lastDialogue = dialogue;
