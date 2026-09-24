@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { actionFromDomKey, canRevealMonsters, GestureRecognizer } from "../src/systems/input.ts";
+import { actionFromDomKey, canRevealMonsters, directionFromTap, GestureRecognizer } from "../src/systems/input.ts";
 const p = (x=100,y=100,time=0,id=1) => ({x,y,time,id});
 describe("touch gesture session", () => {
   it("emits exactly one direction at the CSS-pixel threshold", () => {
@@ -54,5 +54,30 @@ describe("hidden reveal", () => {
   it("preserves existing keyboard controls and adds R", () => {
     for(const key of ["r","R"]) expect(actionFromDomKey(key)).toBe("reveal");
     expect(actionFromDomKey("ArrowLeft")).toBe("left"); expect(actionFromDomKey(" ")).toBe("confirm"); expect(actionFromDomKey("Escape")).toBe("back");
+  });
+});
+
+describe('invisible tap regions', () => {
+  it('assigns four equal non-overlapping regions at phone sizes', () => {
+    for (const [w,h] of [[667,375],[844,390],[390,219]]) {
+      expect(directionFromTap(w*.1,h*.1,w,h)).toBe('left');
+      expect(directionFromTap(w*.1,h*.9,w,h)).toBe('left');
+      expect(directionFromTap(w*.9,h*.1,w,h)).toBe('right');
+      expect(directionFromTap(w*.9,h*.9,w,h)).toBe('right');
+      expect(directionFromTap(w*.25,h*.49,w,h)).toBe('up');
+      expect(directionFromTap(w*.5,h*.5,w,h)).toBe('down');
+      expect(directionFromTap(w*.75,h*.5,w,h)).toBe('right');
+    }
+  });
+  it('emits one regional step on release with no delayed duplicate', () => {
+    const g=new GestureRecognizer(); g.begin(p(),'playfield','left');
+    expect(g.end(p(103,101,90))).toBe('left');
+    expect(g.end(p(103,101,100))).toBeNull();
+    expect(g.hold(700)).toBeNull();
+  });
+  it('preserves holds and cancellation without an extra regional step', () => {
+    const g=new GestureRecognizer(); g.begin(p(),'counter','left');
+    expect(g.hold(600)).toBe('reveal'); expect(g.end(p(100,100,650))).toBeNull();
+    g.begin(p(),'playfield','up'); g.cancel(); expect(g.end(p(100,100,80))).toBeNull();
   });
 });

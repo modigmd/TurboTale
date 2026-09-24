@@ -64,11 +64,11 @@ type GestureTarget = "playfield" | "counter";
 
 /** CSS-pixel gesture state, independent of Phaser's resolution and camera. */
 export class GestureRecognizer {
-  private active: (GesturePoint & { target: GestureTarget; travel: number; consumed: boolean }) | null = null;
+  private active: (GesturePoint & { target: GestureTarget; tapAction: InputAction; travel: number; consumed: boolean }) | null = null;
 
-  begin(point: GesturePoint, target: GestureTarget = "playfield"): boolean {
+  begin(point: GesturePoint, target: GestureTarget = "playfield", tapAction: InputAction = "confirm"): boolean {
     if (this.active) { this.cancel(); return false; }
-    this.active = { ...point, target, travel: 0, consumed: false };
+    this.active = { ...point, target, tapAction, travel: 0, consumed: false };
     return true;
   }
 
@@ -94,7 +94,7 @@ export class GestureRecognizer {
     if (a.consumed) return null;
     const direction = directionFromSwipe(a, point, 32);
     if (direction) return direction;
-    return a.travel <= 10 ? "confirm" : null;
+    return a.travel <= 10 ? a.tapAction : null;
   }
 
   cancel(): void { this.active = null; }
@@ -102,6 +102,13 @@ export class GestureRecognizer {
 
 export function canRevealMonsters(mode: string, oracleMode?: string): boolean {
   return mode === "bridge" && oracleMode === "random";
+}
+
+/** Four equal-area regions. Side quarters own their corners; the center splits vertically. */
+export function directionFromTap(x: number, y: number, width: number, height: number): Direction {
+  if (x < width / 4) return "left";
+  if (x >= width * 3 / 4) return "right";
+  return y < height / 2 ? "up" : "down";
 }
 
 /** One listener surface covers canvas, title, and dialogue without click duplicates. */
@@ -114,7 +121,10 @@ export function bindTouchInput(surface: HTMLElement, emit: (action: InputAction)
     if (event.button !== 0) return;
     const target = event.target instanceof Element && event.target.closest("[data-status]") ? "counter" : "playfield";
     clearTimeout(timer);
-    if (!gesture.begin(point(event), target)) return;
+    const bounds = surface.getBoundingClientRect();
+    const confirms = event.target instanceof Element && event.target.closest(".dialogue-box, [data-start], .status-panel");
+    const tapAction = confirms ? "confirm" : directionFromTap(event.clientX - bounds.left, event.clientY - bounds.top, bounds.width, bounds.height);
+    if (!gesture.begin(point(event), target, tapAction)) return;
     surface.setPointerCapture(event.pointerId);
     timer = setTimeout(() => { const action = gesture.hold(performance.now()); if (action) emit(action); }, 610);
     event.preventDefault();

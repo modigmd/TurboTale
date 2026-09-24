@@ -11,7 +11,7 @@ npm.cmd run dev
 
 ## Play
 
-- **Phone/tablet:** landscape recommended. Swipe anywhere on the game to move one cell.
+- **Phone/tablet:** landscape recommended. Tap the left or right quarter of the game to move left or right. In the middle half, tap above center to move up and below center to move down. These four invisible regions never overlap. Each tap moves one cell on release; swipes also remain supported. Tap dialogue itself to continue it.
 - **Start/dialogue:** tap the title or playfield. Tap dialogue to finish revealing it or continue.
 - **Hint:** hold the playfield for 600 ms.
 - **Reveal helper:** hold the attempt counter for 600 ms on either large final bridge; hold again to hide monsters.
