@@ -1,0 +1,41 @@
+# TurboTale
+
+A snowy pixel-art puzzle adventure about Turbo, an airplane-shell snail crossing three rivers to reach his family.
+
+## Run
+
+```powershell
+npm.cmd install
+npm.cmd run dev
+```
+
+## Play
+
+- **Phone/tablet:** landscape recommended. Swipe anywhere on the game to move one cell.
+- **Start/dialogue:** tap the title or playfield. Tap dialogue to finish revealing it or continue.
+- **Comment:** hold the playfield for 600 ms.
+- **Reveal helper:** hold the attempt counter for 600 ms on either large final bridge; hold again to hide monsters.
+- **Keyboard:** WASD/arrows move, Enter/Space confirm, Escape comments, R toggles the eligible reveal helper. A focused attempt counter also supports Enter/Space.
+- No visible movement, confirm, back, or reveal buttons. Portrait remains playable and suggests rotating.
+- A cancelled gesture, a second simultaneous touch, or a release outside the game does not move Turbo.
+
+## Gameplay
+
+The original rules remain: 3×4 (3 attempts), 4×5 (4 attempts), 24×25 (3 attempts), then the special 24×25 final bridge and family ending. Monster encounters consume attempts; discovered hazards remain known. Only walked cells and the first/final rows look safe; inferred safety stays hidden. Saves continue using `turbotale-progress-v1`.
+
+## Art and layout
+
+Original ImageGen terrain, trees, cabin, props, characters, and four-frame Turbo idle sprites share a snowy blue/amber palette. Runtime assets, original sheets, prompts, extraction metadata, and validation metadata are in `public/assets/generated/snowbound/`. Deterministic cropping/packing is in `scripts/process-snowbound.py` (Python, Pillow, NumPy).
+
+A 960×540 landscape stage uses nearest-neighbor pixels, separate scenery and collision, and a vertically following view on large boards. Dialogue stays inside the fitted viewport. Reduced motion stops decorative snowfall and sprite animation.
+
+## Check
+
+```powershell
+npm.cmd test
+npm.cmd run build
+```
+
+The unit suite covers the puzzle oracles and touch gestures. Browser validation includes touch-only progression through every bridge, encounters/retries/game over, hidden reveal, rotation, and the ending at 667×375 and 844×390.
+
+Sites hosting is configured in `.openai/hosting.json`; deployment serves the Vite `dist` output. See `CREDITS.md` for art provenance.

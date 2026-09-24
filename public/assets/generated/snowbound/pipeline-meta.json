@@ -1,0 +1,209 @@
+{
+  "source": "OpenAI built-in image_gen",
+  "filter": "nearest-neighbor",
+  "assets": {
+    "terrain": {
+      "size": [
+        128,
+        128
+      ],
+      "cell": [
+        32,
+        32
+      ],
+      "frames": 16,
+      "prompt": "terrain.prompt.txt"
+    },
+    "turbo": {
+      "size": [
+        128,
+        128
+      ],
+      "cell": [
+        64,
+        64
+      ],
+      "frames": [
+        {
+          "bounds": [
+            4,
+            17,
+            59,
+            60
+          ],
+          "edge_touch": false
+        },
+        {
+          "bounds": [
+            4,
+            17,
+            60,
+            60
+          ],
+          "edge_touch": false
+        },
+        {
+          "bounds": [
+            4,
+            17,
+            59,
+            60
+          ],
+          "edge_touch": false
+        },
+        {
+          "bounds": [
+            4,
+            17,
+            59,
+            60
+          ],
+          "edge_touch": false
+        }
+      ],
+      "prompt": "turbo.prompt.txt"
+    },
+    "tree": {
+      "size": [
+        64,
+        96
+      ],
+      "cell": [
+        64,
+        96
+      ],
+      "frames": [
+        {
+          "bounds": [
+            4,
+            14,
+            60,
+            92
+          ],
+          "edge_touch": false
+        }
+      ],
+      "prompt": "tree.prompt.txt"
+    },
+    "cabin": {
+      "size": [
+        160,
+        128
+      ],
+      "cell": [
+        160,
+        128
+      ],
+      "frames": [
+        {
+          "bounds": [
+            8,
+            4,
+            151,
+            124
+          ],
+          "edge_touch": false
+        }
+      ],
+      "prompt": "cabin.prompt.txt"
+    },
+    "props": {
+      "size": [
+        128,
+        128
+      ],
+      "cell": [
+        64,
+        64
+      ],
+      "frames": [
+        {
+          "bounds": [
+            4,
+            17,
+            60,
+            60
+          ],
+          "edge_touch": false
+        },
+        {
+          "bounds": [
+            7,
+            4,
+            57,
+            60
+          ],
+          "edge_touch": false
+        },
+        {
+          "bounds": [
+            17,
+            4,
+            47,
+            60
+          ],
+          "edge_touch": false
+        },
+        {
+          "bounds": [
+            4,
+            8,
+            60,
+            60
+          ],
+          "edge_touch": false
+        }
+      ],
+      "prompt": "props.prompt.txt"
+    },
+    "actors": {
+      "size": [
+        128,
+        128
+      ],
+      "cell": [
+        64,
+        64
+      ],
+      "frames": [
+        {
+          "bounds": [
+            4,
+            11,
+            60,
+            60
+          ],
+          "edge_touch": false
+        },
+        {
+          "bounds": [
+            8,
+            4,
+            56,
+            60
+          ],
+          "edge_touch": false
+        },
+        {
+          "bounds": [
+            4,
+            13,
+            60,
+            60
+          ],
+          "edge_touch": false
+        },
+        {
+          "bounds": [
+            10,
+            4,
+            53,
+            60
+          ],
+          "edge_touch": false
+        }
+      ],
+      "prompt": "actors.prompt.txt"
+    }
+  }
+}

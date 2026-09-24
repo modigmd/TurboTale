@@ -1,0 +1,8 @@
+node_modules/
+dist/
+artifacts/
+tmp-contact-sheets/
+.sites-runtime/
+.sites-cache/
+*.tar.gz
+*.tar
