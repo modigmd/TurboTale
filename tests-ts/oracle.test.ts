@@ -149,12 +149,12 @@ describe("random oracle", () => {
 });
 
 describe("bridge run", () => {
-  it("blocks revealed monster cells on later attempts", () => {
+  it("blocks revealed monster cells on later attempts", async () => {
     const run = new BridgeRun(bridge(3, 4));
-    const first = run.move("down");
+    const first = await run.move("down");
     expect(first.kind).toBe("monster");
 
-    const blocked = run.move("down");
+    const blocked = await run.move("down");
     expect(blocked.kind).toBe("blocked");
     if (blocked.kind === "blocked") {
       expect(blocked.reason).toBe("monster");

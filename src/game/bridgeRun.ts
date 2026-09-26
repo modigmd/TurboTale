@@ -1,6 +1,7 @@
 import type { BridgeConfig, Cell, Direction, MoveResult } from "./types.ts";
 import { cellKey } from "./types.ts";
 import { RandomOracle, WorstCaseOracle, type BridgeOracle } from "./oracle.ts";
+import { StrategicOracle } from "./strategicOracle.ts";
 
 const DELTAS: Record<Direction, Cell> = {
   up: { row: -1, col: 0 },
@@ -16,10 +17,12 @@ export class BridgeRun {
   attempt = 1;
   won = false;
   lost = false;
+  private disposed = false;
+  private pending = false;
 
-  constructor(bridge: BridgeConfig) {
+  constructor(bridge: BridgeConfig, oracle?: BridgeOracle) {
     this.bridge = bridge;
-    this.oracle = bridge.oracleMode === "random" ? new RandomOracle(bridge) : new WorstCaseOracle(bridge);
+    this.oracle = oracle ?? (bridge.oracleMode === "strategic" ? new StrategicOracle(bridge) : bridge.oracleMode === "random" ? new RandomOracle(bridge) : new WorstCaseOracle(bridge));
     this.turbo = this.startCell();
     this.oracle.markSafe(this.turbo);
   }
@@ -32,10 +35,11 @@ export class BridgeRun {
     return { row: this.bridge.height - 1, col: Math.floor(this.bridge.width / 2) };
   }
 
-  move(direction: Direction): MoveResult {
-    if (this.won || this.lost) {
+  async move(direction: Direction): Promise<MoveResult> {
+    if (this.disposed || this.won || this.lost) {
       return { kind: "blocked", cell: this.turbo, reason: "finished" };
     }
+    if (this.pending) return { kind: "blocked", cell: this.turbo, reason: "pending" };
 
     const delta = DELTAS[direction];
     const target = { row: this.turbo.row + delta.row, col: this.turbo.col + delta.col };
@@ -46,7 +50,11 @@ export class BridgeRun {
       return { kind: "blocked", cell: target, reason: "monster" };
     }
 
-    const hitMonster = this.oracle.revealIfMonster(target);
+    this.pending = true;
+    let hitMonster: boolean;
+    try { hitMonster = await this.oracle.revealIfMonster(target); }
+    finally { this.pending = false; }
+    if (this.disposed) return { kind: "blocked", cell: this.turbo, reason: "finished" };
     if (hitMonster) {
       this.attempt += 1;
       const attemptsLeft = Math.max(0, this.bridge.maxAttempts - this.attempt + 1);
@@ -71,4 +79,6 @@ export class BridgeRun {
   private inBounds(cell: Cell): boolean {
     return cell.row >= 0 && cell.row < this.bridge.height && cell.col >= 0 && cell.col < this.bridge.width;
   }
+
+  dispose(): void { this.disposed = true; this.oracle.dispose?.(); }
 }

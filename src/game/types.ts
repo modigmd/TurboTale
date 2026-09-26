@@ -15,13 +15,13 @@ export interface BridgeConfig {
   height: number;
   maxAttempts: number;
   intro: DialogueLine[];
-  oracleMode?: "worst-case" | "random";
+  oracleMode?: "worst-case" | "random" | "strategic";
   forcedMonsters?: Cell[];
 }
 
 export type MoveResult =
   | { kind: "moved"; cell: Cell }
-  | { kind: "blocked"; cell: Cell; reason: "finished" | "bounds" | "monster" }
+  | { kind: "blocked"; cell: Cell; reason: "finished" | "bounds" | "monster" | "pending" }
   | { kind: "monster"; cell: Cell; attemptsLeft: number }
   | { kind: "gameOver"; cell: Cell }
   | { kind: "won"; cell: Cell };

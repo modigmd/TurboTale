@@ -15,7 +15,6 @@ export const BRIDGES: BridgeConfig[] = [
     ] }
 ];
 export const FINAL_EDGE_BRIDGE: BridgeConfig = {
-  id: "final-edge", title: "Final Bridge", width: 24, height: 25, maxAttempts: 3, oracleMode: "random",
-  intro: [{ speaker: "jury", text: "One more bridge. You have 3 attempts." }],
-  forcedMonsters: [{ row: 1, col: 0 }]
+  id: "final-edge", title: "Final Bridge", width: 24, height: 25, maxAttempts: 3, oracleMode: "strategic",
+  intro: [{ speaker: "jury", text: "One more bridge. You have 3 attempts." }]
 };

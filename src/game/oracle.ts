@@ -8,10 +8,11 @@ export interface BridgeOracle {
   readonly visitedCells: Set<string>;
   readonly blockedCells: Set<string>;
   markSafe(cell: Cell): void;
-  revealIfMonster(cell: Cell): boolean;
+  revealIfMonster(cell: Cell): boolean | Promise<boolean>;
   isSafeVisual(cell: Cell): boolean;
   isMonsterVisual(cell: Cell): boolean;
   isMonsterAt(cell: Cell): boolean;
+  dispose?(): void;
 }
 
 export class WorstCaseOracle {

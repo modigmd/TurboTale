@@ -25,16 +25,16 @@ describe("world obstacles", () => {
   });
 });
 describe("bridge endpoints and silent blocks", () => {
-  it.each([0,1,2,12,23])("wins at final-row column %s", col => {
+  it.each([0,1,2,12,23])("wins at final-row column %s", async col => {
     const run=new BridgeRun({id:"test",title:"Test",width:24,height:25,maxAttempts:3,intro:[],oracleMode:"random"});
     run.turbo={row:23,col};
-    expect(run.move("down")).toEqual({kind:"won",cell:{row:24,col}});
+    expect(await run.move("down")).toEqual({kind:"won",cell:{row:24,col}});
     expect(run.won).toBe(true);
   });
-  it("an out-of-bounds move leaves the next valid move available", () => {
+  it("an out-of-bounds move leaves the next valid move available", async () => {
     const run=new BridgeRun({id:"test",title:"Test",width:3,height:4,maxAttempts:3,intro:[]});
-    expect(run.move("up")).toMatchObject({kind:"blocked",reason:"bounds"});
-    expect(run.move("right")).toMatchObject({kind:"moved",cell:{row:0,col:2}});
+    expect(await run.move("up")).toMatchObject({kind:"blocked",reason:"bounds"});
+    expect(await run.move("right")).toMatchObject({kind:"moved",cell:{row:0,col:2}});
     expect(run.attempt).toBe(1);
   });
 });

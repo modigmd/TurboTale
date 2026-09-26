@@ -3,7 +3,7 @@ import { AssetPaths, TextureKeys, TerrainFrames, TileIds, TILE_SIZE } from "../a
 import { BRIDGES, FINAL_EDGE_BRIDGE } from "../data/bridges.ts";
 import { BridgeRun } from "../game/bridgeRun.ts";
 import { DialogueModel } from "../game/dialogue.ts";
-import { cellKey, type Cell, type Direction, type InputAction } from "../game/types.ts";
+import { cellKey, type Cell, type Direction, type InputAction, type MoveResult } from "../game/types.ts";
 import { loadProgress, saveProgress, type SavedProgress } from "../game/progress.ts";
 import { bindTouchInput, canRevealMonsters, InputRouter, MovementPacer } from "../systems/input.ts";
 import { RetroAudio } from "../systems/retroAudio.ts";
@@ -20,6 +20,7 @@ export class GameScene extends Phaser.Scene {
   private audio!: RetroAudio;
   private dialogue!: DialogueModel;
   private run: BridgeRun | null = null;
+  private pendingRun: BridgeRun | null = null;
   private mode: Mode = "title";
   private nextAfterDialogue: (() => void) | null = null;
   private boardLayer!: Phaser.GameObjects.Container;
@@ -56,6 +57,7 @@ export class GameScene extends Phaser.Scene {
     this.inputRouter.on(action => this.handleAction(action));
     const unbind = bindTouchInput(document.getElementById("game-shell")!, action => this.inputRouter.emit(action));
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, unbind);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => { this.run?.dispose(); this.run = null; });
     const resizeObserver = new ResizeObserver(() => {
       this.scale.getParentBounds();
       this.scale.refresh();
@@ -142,7 +144,7 @@ export class GameScene extends Phaser.Scene {
     }
     this.hud.clearNotice();
     if (this.mode === "overworld") this.moveOverworld(action);
-    else if (this.mode === "bridge" && this.run) this.moveBridge(action);
+    else if (this.mode === "bridge" && this.run) void this.moveBridge(action);
   }
 
   private advanceDialogue(): boolean {
@@ -181,6 +183,7 @@ export class GameScene extends Phaser.Scene {
 
   private startBridgeIntro(index: number): void {
     this.mode = "story";
+    this.run?.dispose();
     this.run = null;
     this.encounterLayer.setVisible(false);
     this.drawOverworld();
@@ -191,12 +194,14 @@ export class GameScene extends Phaser.Scene {
   private startBridge(index: number): void {
     this.mode = "bridge";
     this.revealMonsterPlaces = false;
+    this.run?.dispose();
     this.run = new BridgeRun(BRIDGES[index]);
     this.drawBridge();
   }
 
   private startFinalEdgeBridgeIntro(): void {
     this.mode = "story";
+    this.run?.dispose();
     this.run = null;
     this.encounterLayer.setVisible(false);
     this.dialogue.say(FINAL_EDGE_BRIDGE.intro);
@@ -206,20 +211,29 @@ export class GameScene extends Phaser.Scene {
   private startFinalEdgeBridge(): void {
     this.mode = "bridge";
     this.revealMonsterPlaces = false;
+    this.run?.dispose();
     this.run = new BridgeRun(FINAL_EDGE_BRIDGE);
     this.drawBridge();
   }
 
-  private moveBridge(direction: Direction): void {
-    if (!this.run || this.dialogue.hasText) {
+  private async moveBridge(direction: Direction): Promise<void> {
+    if (!this.run || this.dialogue.hasText || this.pendingRun === this.run) {
       return;
     }
-    const result = this.run.move(direction);
-    this.drawBridge();
+    const run = this.run;
+    this.pendingRun = run;
+    let result: MoveResult;
+    try { result = await run.move(direction); }
+    catch {
+      if (this.run === run && this.mode === "bridge") this.hud.showNotice("Couldn't check that step. Try again.");
+      return;
+    } finally { if (this.pendingRun === run) this.pendingRun = null; }
+    if (this.run !== run || this.mode !== "bridge") return;
 
     if (result.kind === "blocked") {
       return;
     }
+    this.drawBridge();
     if (result.kind === "monster") {
       this.showEncounter("* A monster!");
       this.dialogue.say([{speaker:"turbo",text:"A monster!"},{speaker:"jury",text:`${result.attemptsLeft} attempt${result.attemptsLeft === 1 ? "" : "s"} left.`}]);
@@ -246,6 +260,7 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     if (this.run.bridge.id === FINAL_EDGE_BRIDGE.id) {
+      this.run.dispose();
       this.mode = "ended";
       this.drawFamilyEnding();
       this.dialogue.say({speaker:"family",text:"You're home!"});
@@ -260,6 +275,7 @@ export class GameScene extends Phaser.Scene {
     this.overworldTurbo = { ...BRIDGE_EXITS[currentIndex] };
     saveProgress(this.progress);
     this.mode = "overworld";
+    this.run.dispose();
     this.run = null;
     this.drawOverworld();
   }

@@ -25,7 +25,7 @@ export class DomHud {
       </section>
       <aside class="status-panel" hidden>
         <strong data-bridge>TurboTale</strong>
-        <span data-status tabindex="0" role="button" aria-label="Attempt counter. Hold to toggle monster reveal on final bridges.">NEXT BRIDGE 1</span>
+        <span data-status tabindex="0" role="button" aria-label="Attempt counter. Monster reveal is unavailable here.">NEXT BRIDGE 1</span>
         <span class="reveal-state" hidden>MONSTERS REVEALED</span>
       </aside>
       <p class="world-notice" role="status" hidden></p>
@@ -84,6 +84,7 @@ export class DomHud {
     const status = this.root.querySelector<HTMLElement>("[data-status]")!;
     status.textContent = run ? `ATTEMPT ${Math.min(run.attempt, run.bridge.maxAttempts)} / ${run.bridge.maxAttempts}` : `NEXT BRIDGE ${progress.unlockedBridge + 1}`;
     status.setAttribute("aria-disabled", String(!revealAvailable));
+    status.setAttribute("aria-label", `${status.textContent}. ${revealAvailable ? "Hold to toggle monster reveal." : "Monster reveal is unavailable here."}`);
     status.setAttribute("aria-pressed", String(monstersRevealed));
     this.root.querySelector<HTMLElement>(".reveal-state")!.hidden = !monstersRevealed;
   }
