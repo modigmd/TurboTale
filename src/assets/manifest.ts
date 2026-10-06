@@ -3,7 +3,8 @@ export const TextureKeys = {
   terrain: "snowbound-terrain", tree: "snowbound-tree", cabin: "snowbound-cabin",
   props: "snowbound-props", actors: "snowbound-actors", turbo: "snowbound-turbo", star: "snowbound-star"
 } as const;
-const root = "/assets/generated/snowbound/";
+export const SNOWBOUND_ASSET_ROOT = import.meta.env.BASE_URL + "assets/generated/snowbound/";
+const root = SNOWBOUND_ASSET_ROOT;
 export const AssetPaths = {
   terrain: root + "terrain.png", tree: root + "tree.png", cabin: root + "cabin.png",
   props: root + "props.png", actors: root + "actors.png", turbo: root + "turbo.png", star: root + "star.png"

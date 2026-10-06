@@ -47,3 +47,13 @@ npm.cmd run build
 The unit suite covers the puzzle oracles, exhaustive small-board minimax comparison, all 24 starting columns, worker lifecycle, and touch gestures. Browser validation includes touch-only progression through every bridge, encounters/retries/game over, hidden reveal, rotation, and the ending at 667×375 and 844×390.
 
 Sites hosting is configured in `.openai/hosting.json`; deployment serves the Vite `dist` output. See `CREDITS.md` for art provenance.
+
+## GitHub Pages
+
+The GitHub Actions workflow in `.github/workflows/pages.yml` tests, builds, and publishes the game on pushes to `master` or `main`. In repository Settings → Pages, select **GitHub Actions** as the source. The workflow uses the Pages base path for scripts, artwork, dialogue portraits, and the strategic worker, so project URLs work correctly. The published game URL appears in the workflow's `github-pages` deployment.
+
+To check a project-path build locally:
+
+```powershell
+npm.cmd run build -- --base /TurboTale/
+```

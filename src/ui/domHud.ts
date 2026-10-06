@@ -1,6 +1,7 @@
 import type { BridgeRun } from "../game/bridgeRun.ts";
 import type { SavedProgress } from "../game/progress.ts";
 import type { Speaker } from "../game/types.ts";
+import { SNOWBOUND_ASSET_ROOT } from "../assets/manifest.ts";
 
 const SPEAKERS: Record<Speaker, {name:string; image:string}> = {
   turbo: {name:"Turbo",image:"turbo-face.png"},
@@ -30,7 +31,7 @@ export class DomHud {
       </aside>
       <p class="world-notice" role="status" hidden></p>
       <section class="dialogue-box" aria-live="polite" aria-atomic="true" hidden>
-        <img class="speaker-face" src="/assets/generated/snowbound/turbo-face.png" alt="" />
+        <img class="speaker-face" src="${SNOWBOUND_ASSET_ROOT}turbo-face.png" alt="" />
         <div><strong class="speaker-name" data-speaker></strong><p data-dialogue></p></div>
         <span class="continue-cue" aria-hidden="true">◆</span>
       </section>
@@ -68,7 +69,7 @@ export class DomHud {
   update(run: BridgeRun | null, dialogue: string, dialogueReady: boolean, progress: SavedProgress, revealAvailable: boolean, monstersRevealed: boolean, speaker: Speaker): void {
     const person=SPEAKERS[speaker];
     const face=this.root.querySelector<HTMLImageElement>(".speaker-face")!;
-    const image="/assets/generated/snowbound/"+person.image;
+    const image=SNOWBOUND_ASSET_ROOT+person.image;
     if(face.getAttribute("src")!==image) face.setAttribute("src",image);
     face.alt=person.name;
     this.root.querySelector("[data-speaker]")!.textContent=person.name;
